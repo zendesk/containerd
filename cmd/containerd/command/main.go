@@ -19,6 +19,7 @@ package command
 import (
 	gocontext "context"
 	"fmt"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 	"io"
 	"net"
 	"os"
@@ -182,6 +183,25 @@ can be used and modified as necessary as a custom configuration.`
 			s   *server.Server
 			err error
 		}
+
+		// start ddtrace profiler
+		err = profiler.Start(
+			profiler.WithService(app.Name),
+			profiler.WithVersion(app.Version),
+			profiler.WithProfileTypes(
+				profiler.CPUProfile,
+				profiler.HeapProfile,
+
+				// The profiles below cause significant overhead
+				profiler.BlockProfile,
+				profiler.MutexProfile,
+				profiler.GoroutineProfile,
+			),
+		)
+		if err != nil {
+			return err
+		}
+		defer profiler.Stop()
 
 		// run server initialization in a goroutine so we don't end up blocking important things like SIGTERM handling
 		// while the server is initializing.
